@@ -1,6 +1,7 @@
-let () = print_string "This is the benchmark!"
+let () = print_endline "This is the benchmark!"
 
-(* 
+(* open Map_impls;;
+
 let rec nmap_unrolled2_handwritten f = function
   | [] -> []
   | x1 :: x2 :: xs -> let y1 = f x1 and y2 = f x2 in y1 :: y2 :: nmap_unrolled2_handwritten f xs
@@ -160,17 +161,17 @@ let test_list = List.init 100_000 Fun.id
 
 (* Check the behaviour *)
 let () = 
-    let m = Standard_impl.map succ [] test_list
-    and n = nmap succ test_list
+    let m = Map_impls.Standard.map succ [] test_list
+    and n = Map_impls.Standard.nmap succ test_list
 
     and nu2h = nmap_unrolled2_handwritten succ test_list
     and nu2g = nmap_unrolled2_generated succ test_list
     and nu8h = nmap_unrolled8_handwritten succ test_list
     and nu8g = nmap_unrolled8_generated succ test_list
 
-    and u = umap succ [] test_list
-    and c = cmap succ Nil test_list
-    and c2 = cmap2 succ Nil test_list
+    and u = Unrolled_list.umap succ [] test_list
+    and c = Unrolled_ds.cmap8 succ Nil test_list
+    and c2 = Unrolled_ds.cmap16 succ Nil test_list
     and t = trmc_map succ test_list in
     assert (m = u);
     assert (m = n);
@@ -183,8 +184,8 @@ let () =
     assert (m = nu8h);
     assert (m = nu8g)
 
-let map_bench _ = Core.Staged.stage (fun () -> ignore (map succ [] test_list))
-let nmap_bench _ = Core.Staged.stage (fun () -> ignore (nmap succ test_list))
+let map_bench _ = Core.Staged.stage (fun () -> ignore (Standard.map succ [] test_list))
+let nmap_bench _ = Core.Staged.stage (fun () -> ignore (Standard.nmap succ test_list))
 let nmap_unrolled2_handwritten_bench _ = Core.Staged.stage (fun () -> ignore (nmap_unrolled2_handwritten succ test_list))
 
 let nmap_unrolled2_generated_bench _ = Core.Staged.stage (fun () -> ignore (nmap_unrolled2_generated succ test_list))
@@ -193,12 +194,12 @@ let nmap_unrolled8_handwritten_bench _ = Core.Staged.stage (fun () -> ignore (nm
 
 let nmap_unrolled8_generated_bench _ = Core.Staged.stage (fun () -> ignore (nmap_unrolled8_generated succ test_list))
 
-let umap_bench _ = Core.Staged.stage (fun () -> ignore (umap succ [] test_list))
-let cmap_bench _ = Core.Staged.stage (fun () -> ignore (cmap succ Nil test_list))
-let cmap2_bench _ = Core.Staged.stage (fun () -> ignore (cmap2 succ Nil test_list))
+let umap_bench _ = Core.Staged.stage (fun () -> ignore (Unrolled_list.umap succ [] test_list))
+let cmap_bench _ = Core.Staged.stage (fun () -> ignore (Unrolled_ds.cmap8 succ Nil test_list))
+let cmap2_bench _ = Core.Staged.stage (fun () -> ignore (Unrolled_ds.cmap16 succ Nil test_list))
 let tmap_bench _ = Core.Staged.stage (fun () -> ignore (trmc_map succ test_list))
 
-open Core
+(* open Core *)
 open Core_bench
 
 let args = [0]
