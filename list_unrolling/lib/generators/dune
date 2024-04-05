@@ -1,0 +1,3 @@
+(library
+ (name generators)
+ (libraries dynlink metaocaml))

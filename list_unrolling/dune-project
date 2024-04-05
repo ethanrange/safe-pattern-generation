@@ -1,0 +1,25 @@
+(lang dune 3.14)
+
+(name list_unrolling)
+
+(generate_opam_files true)
+
+(source
+ (github ethanrange/msp-optimised-datastructures))
+
+(authors "Ethan Range")
+
+(maintainers "Ethan Range")
+
+; (license LICENSE)
+
+; (documentation https://url/to/documentation)
+
+(package
+ (name list_unrolling)
+ (synopsis "MSP-Generated list urollings")
+ (description "MSP-Generated list urollings")
+ (depends ocaml dune dynlink metaocaml core_unix core_bench)
+ (tags
+  ("multi-stage programming", "unrolling", "optimisation", "data structures")))
+
