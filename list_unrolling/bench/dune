@@ -1,3 +1,10 @@
 (executable
  (name benchmark)
- (libraries generators map_impls core core_bench core_unix.command_unix))
+ (libraries generators map_impls core core_bench core_unix.command_unix)
+ (flags (-thread)))
+
+(rule
+ (alias bench)
+ (deps (universe))
+ (action
+  (run ./benchmark.exe -quota 0.5)))

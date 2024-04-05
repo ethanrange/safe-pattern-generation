@@ -1,6 +1,4 @@
-let () = print_endline "This is the benchmark!"
-
-(* open Map_impls;;
+open Map_impls;;
 
 let rec nmap_unrolled2_handwritten f = function
   | [] -> []
@@ -217,4 +215,4 @@ let () = Command_unix.run (Bench.make_command [
     Bench.Test.create_indexed ~name:"cmap" ~args cmap_bench;
     Bench.Test.create_indexed ~name:"cmap2" ~args cmap2_bench;
     Bench.Test.create_indexed ~name:"tmap" ~args tmap_bench;
-  ]) *)
+  ])
