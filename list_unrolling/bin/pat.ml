@@ -46,7 +46,7 @@ struct
 
   let[@warning "-32"] list_example = function_ [
     empty       => .< [] >. ;
-    var >:: var => .<fun x xs -> xs>.
+    var >:: var => .<fun _ xs -> xs>.
   ]
 
   (* Due to OCaml's restrictions on the RHS of let recs, a let rec RHS cannot be a direct quote of code. In cases
@@ -64,14 +64,14 @@ struct
      See https://ocaml.org/manual/5.1/letrecvalues.html for discussion of these RHS restrictions *)
   let[@warning "-32"] length_example : ('a list -> int) code = .<let rec len _ = .~(function_ [
     empty       => .< 0 >. ;
-    var >:: var => .<fun x xs -> 1 + len () xs>.
+    var >:: var => .<fun _ xs -> 1 + len () xs>.
   ]) in len ()>.
 
   let[@warning "-32"] match_length_example : ('a list -> int) code = .<let rec len l = .~(match_ .<l>. [
     empty       => .< 0 >. ;
-    var >:: var => .<fun x xs -> 1 + len xs>.
+    var >:: var => .<fun _ xs -> 1 + len xs>.
   ]) in len>.
-  let nmap_example = .<let rec nmap f = .~(function_ [
+  let[@warning "-32"] nmap_example = .<let rec nmap f = .~(function_ [
     empty       => .<[]>.;
     var >:: var => .<fun x xs -> let y = f x in y :: nmap f xs>.
   ]) in nmap>.;;
@@ -106,15 +106,15 @@ module PatImp : pat = struct
   (* Helper functions *)
 
   (* code_repr internals from Trx *)
-  type 'v heap = Nil | HNode of int * stackmark * 'v * 'v heap * 'v heap
-  type cr = Code of flvars * Parsetree.expression
+  type[@warning "-37"] 'v heap = Nil | HNode of int * stackmark * 'v * 'v heap * 'v heap
+  type[@warning "-37"] cr = Code of flvars * Parsetree.expression
   and flvars = string Location.loc heap * vletbindings
   and vletbindings = (string * code_repr) list
   
   let reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in 
     let Code(_, pexp) = Obj.magic code_rep in pexp
 
-  let closed_reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in
+  let[@warning "-32"] closed_reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in
       let pexp : closed_code_repr :> Parsetree.expression = close_code_repr ~csp:CSP_error code_rep in pexp
 
   (* let rec decomp : Parsetree.expression -> Parsetree.expression = fun x -> match x.pexp_desc with
@@ -165,7 +165,11 @@ let () = Codelib.print_code Format.std_formatter PatImpExamples.match_length_exa
 let len : 'a list -> int = Runnative.run PatImpExamples.match_length_example in print_int (len [1;2;3])
 (* in List.iter print_int (matcher [1; 2]); print_endline "";; *)
 
-(* Attempts at n argument function application generator *)
+(* 
+  ////////
+  Attempts at n argument function application generator 
+  ////////
+*)
 
 (* 
 let gen_n_apply (n : int) = 
@@ -186,7 +190,13 @@ let gen_n_apply (n : int) =
 (* let f (x : int) = x ;; *)
 (* let app2 = Runnative.run (gen_n_apply 3) in print_int (app2 (fun a b c -> a + b + c) [5; 6; 7; 8;]); print_endline "";; *)
 
-module Test = struct  
+(* 
+  ////////
+  Function application experiments 
+  ////////
+*)
+
+(* module FunAppPlayground = struct  
   type (_,_) t = Val : ('r code, 'r code) t
                | Fn : ('a, 'r) t -> (int code -> 'a, 'r) t
 
@@ -198,9 +208,9 @@ module Test = struct
     | Val -> f
     | Fn g -> g @@@ (f (next ()))
 
-  (* let none = Val @@@ .< [] >.
+  let none = Val @@@ .< [] >.
   let one = (Fn Val) @@@ fun x -> .< [.~x] >.
-  let two = Fn (Fn Val) @@@ fun x y -> .< [.~x; .~y] >. *)
-end
+  let two = Fn (Fn Val) @@@ fun x y -> .< [.~x; .~y] >.
+end *)
 
 (* let () = let open Test in print_code Format.std_formatter (Fn (Fn Val) @@@ fun x y -> .< [.~x; .~y] >.) *)
