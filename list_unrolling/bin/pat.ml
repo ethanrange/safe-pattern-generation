@@ -46,10 +46,14 @@ struct
     var >:: var => .<fun x xs -> xs>.
   ]
 
-  let[@warning "-32"] length_example : ('a list -> int) code = .<let rec f = .~(function_ [
+  let[@warning "-32"] length_example : ('a list -> int) code = .<let rec len _ = .~(function_ [
     empty       => .< 0 >. ;
-    var >:: var => .<fun x xs -> 1>.
-    ]) in f>.
+    var >:: var => .<fun x xs -> 1 + len () xs>.
+  ]) in len ()>.
+  let nmap_example = .<let rec nmap f = .~(function_ [
+    empty       => .<[]>.;
+    var >:: var => .<fun x xs -> let y = f x in y :: nmap f xs>.
+  ]) in nmap>.;;
 end
 
 module PatImp : pat = struct
@@ -79,9 +83,18 @@ module PatImp : pat = struct
   type ('a, 'b) case = Parsetree.case
 
   (* Helper functions *)
+
+  (* code_repr internals from Trx *)
+  type 'v heap = Nil | HNode of int * stackmark * 'v * 'v heap * 'v heap
+  type cr = Code of flvars * Parsetree.expression
+  and flvars = string Location.loc heap * vletbindings
+  and vletbindings = (string * code_repr) list
   
   let reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in 
-    let pexp : closed_code_repr :> Parsetree.expression = close_code_repr ~csp:CSP_error code_rep in pexp
+    let Code(_, pexp) = Obj.magic code_rep in pexp
+
+  let closed_reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in
+      let pexp : closed_code_repr :> Parsetree.expression = close_code_repr ~csp:CSP_error code_rep in pexp
 
   (* let rec decomp : Parsetree.expression -> Parsetree.expression = fun x -> match x.pexp_desc with
     | Parsetree.Pexp_fun(Nolabel, None, p, e) -> decomp e
@@ -119,9 +132,11 @@ end
 
 module PatImpExamples = Examples(PatImp)
 
-let () = Codelib.print_code Format.std_formatter PatImpExamples.list_example;;
+let () = Codelib.print_code Format.std_formatter PatImpExamples.length_example;;
 
-let matcher : 'a list -> 'a list = Runnative.run PatImpExamples.list_example in matcher [1; 2]
+(* let matcher : 'a list -> 'a list = Runnative.run PatImpExamples.list_example in matcher [1; 2] *)
+(* let nmap : ('a -> 'b) -> 'a list -> 'b list = Runnative.run PatImpExamples.nmap_example in List.iter print_int (nmap succ [1; 2]) *)
+let len : 'a list -> int = Runnative.run PatImpExamples.length_example in print_int (len [1;2;3])
 (* in List.iter print_int (matcher [1; 2]); print_endline "";; *)
 
 (* Attempts at n argument function application generator *)
@@ -162,4 +177,4 @@ module Test = struct
   let two = Fn (Fn Val) @@@ fun x y -> .< [.~x; .~y] >. *)
 end
 
-let () = let open Test in print_code Format.std_formatter (Fn (Fn Val) @@@ fun x y -> .< [.~x; .~y] >.)
+(* let () = let open Test in print_code Format.std_formatter (Fn (Fn Val) @@@ fun x y -> .< [.~x; .~y] >.) *)
