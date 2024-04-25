@@ -4,12 +4,6 @@
  (libraries generators map_impls)
  (modules main))
 
-(executable
- (public_name pat)
- (name pat)
- (libraries dynlink metaocaml)
- (modules pat))
-
-(env
-  (dev
-    (flags (:standard -warn-error -A))))
+; (env
+;   (dev
+;     (flags (:standard -warn-error -A))))
