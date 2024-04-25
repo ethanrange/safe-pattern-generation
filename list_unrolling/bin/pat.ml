@@ -24,6 +24,9 @@ module type pat = sig
 
   (* Function generator *)
   val function_ : ('a, 'b) case list -> ('a -> 'b) code
+
+  (* Match generator *)
+  val match_ : ('a code) -> ('a, 'b) case list -> 'b code
 end
 
 module Examples(P : pat) =
@@ -46,10 +49,28 @@ struct
     var >:: var => .<fun x xs -> xs>.
   ]
 
+  (* Due to OCaml's restrictions on the RHS of let recs, a let rec RHS cannot be a direct quote of code. In cases
+     where arguments are taken in, such as the nmap_example below, this is not a problem, as the RHS is of the form
+    
+     fun x -> .< code >.
+     
+     However this is a problem in the length example. It can be overcome by either making the RHS of the form
+     
+     fun () -> .< code >. and passing a unit to every recrusive call, or
+     lazy .< code >. and using Lazy.force before every recursive call.contents
+     
+     Alternatively, the match_ generator may be used to avoid this issue entirely, by explicitly stating the scrutinee
+     
+     See https://ocaml.org/manual/5.1/letrecvalues.html for discussion of these RHS restrictions *)
   let[@warning "-32"] length_example : ('a list -> int) code = .<let rec len _ = .~(function_ [
     empty       => .< 0 >. ;
     var >:: var => .<fun x xs -> 1 + len () xs>.
   ]) in len ()>.
+
+  let[@warning "-32"] match_length_example : ('a list -> int) code = .<let rec len l = .~(match_ .<l>. [
+    empty       => .< 0 >. ;
+    var >:: var => .<fun x xs -> 1 + len xs>.
+  ]) in len>.
   let nmap_example = .<let rec nmap f = .~(function_ [
     empty       => .<[]>.;
     var >:: var => .<fun x xs -> let y = f x in y :: nmap f xs>.
@@ -126,17 +147,22 @@ module PatImp : pat = struct
     let fun_exp : Parsetree.expression = Ast_helper.Exp.function_ cases in
     let fun_ccode : closed_code_repr = Obj.magic fun_exp in 
     Obj.magic (open_code fun_ccode)
+
+  let match_ (scr : 'a code) (cases : ('a, 'b) case list) : 'b code =
+    let match_exp : Parsetree.expression = Ast_helper.Exp.match_ (reduce_code scr) cases in
+    let match_ccode : closed_code_repr = Obj.magic match_exp in 
+    Obj.magic (open_code match_ccode)
 end
 
 (* Testing *)
 
 module PatImpExamples = Examples(PatImp)
 
-let () = Codelib.print_code Format.std_formatter PatImpExamples.length_example;;
+let () = Codelib.print_code Format.std_formatter PatImpExamples.match_length_example;;
 
 (* let matcher : 'a list -> 'a list = Runnative.run PatImpExamples.list_example in matcher [1; 2] *)
 (* let nmap : ('a -> 'b) -> 'a list -> 'b list = Runnative.run PatImpExamples.nmap_example in List.iter print_int (nmap succ [1; 2]) *)
-let len : 'a list -> int = Runnative.run PatImpExamples.length_example in print_int (len [1;2;3])
+let len : 'a list -> int = Runnative.run PatImpExamples.match_length_example in print_int (len [1;2;3])
 (* in List.iter print_int (matcher [1; 2]); print_endline "";; *)
 
 (* Attempts at n argument function application generator *)
