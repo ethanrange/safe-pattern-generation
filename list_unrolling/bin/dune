@@ -1,9 +1,9 @@
 (executable
  (public_name list_unrolling)
  (name main)
- (libraries generators map_impls)
+ (libraries generators fcp_generators map_impls)
  (modules main))
 
-; (env
-;   (dev
-;     (flags (:standard -warn-error -A))))
+(env
+  (dev
+    (flags (:standard -warn-error -A))))

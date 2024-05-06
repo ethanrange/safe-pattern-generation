@@ -27,6 +27,13 @@ module type pat = sig
 
   (* Match generator *)
   val match_ : ('a code) -> ('a, 'b) case list -> 'b code
+
+  (* Unsafe first-class pattern generation *)
+
+  type (_, _) unsafe_pat
+
+  val unsafe_loosen : ('a, 'f, 'r) pat -> ('a, 'r) unsafe_pat
+  val unsafe_tighten : ('a, 'r) unsafe_pat -> ('a, 'f, 'r) pat
 end
 
 module type ptreplace = sig
@@ -168,4 +175,11 @@ module PatImp : pat = struct
     let match_exp : Parsetree.expression = Ast_helper.Exp.match_ (reduce_code scr) cases in
     let match_ccode : closed_code_repr = Obj.magic match_exp in 
     Obj.magic (open_code match_ccode)
+
+  (* Unsafe first-class pattern generation *)
+
+  type ('a, 'r) unsafe_pat = pat_tree
+
+  let unsafe_loosen (p : ('a, 'f, 'r) pat) : ('a, 'r) unsafe_pat = Obj.magic p
+  let unsafe_tighten (p : ('a, 'r) unsafe_pat) : ('a, 'f, 'r) pat = Obj.magic p
 end

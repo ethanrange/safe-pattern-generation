@@ -8,3 +8,7 @@
  (name pat_playground)
  (libraries dynlink metaocaml utilities)
  (modules pat_playground))
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))
