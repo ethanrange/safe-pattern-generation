@@ -43,7 +43,7 @@ module PTReplace : ptreplace = struct
 
   exception NotImplemented of string
 
-  let pt_replace_ident (prev : string) (subst : expression) : expression -> expression = fun e -> 
+  let pt_replace_ident (prev : string) (subst : expression): expression -> expression = fun e -> 
     let rec replace : expression -> expression = fun x -> match x.pexp_desc with
       | Pexp_ident {txt = Lident s; loc = _} when s = prev                                                -> subst
       | Pexp_ident _ | Pexp_constant _                                                                    -> x
@@ -86,7 +86,7 @@ module PTReplace : ptreplace = struct
                                       NotImplemented "Parsetree renaming is not implemented for this expression type"
   in replace e
 
-  let apply_fun (subst : expression) : expression -> expression = fun e -> match e.pexp_desc with
+  let apply_fun (e : expression) (subst : expression) : expression = match e.pexp_desc with
     | Pexp_fun (_, _, pat, ex) -> begin 
         match pat.ppat_desc with
           | Ppat_var {txt = prev; loc = _} -> pt_replace_ident prev subst ex
@@ -112,7 +112,7 @@ module PatImp : pat = struct
 
   let __ : ('a, 'r, 'r) pat = Any
   let int : int -> (int, 'r, 'r) pat = fun n -> Int n
-  let var : ('a, 'a -> 'r code, 'r) pat = Var
+  let var : ('a, 'a -> 'r, 'r) pat = Var
   
   let ( ** ) : ('a, 'k, 'j) pat -> ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat = fun l r -> Pair (l, r)
 
@@ -135,10 +135,6 @@ module PatImp : pat = struct
   let[@warning "-32"] closed_reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in
       let pexp : closed_code_repr :> Parsetree.expression = close_code_repr ~csp:CSP_error code_rep in pexp
 
-  (* let rec decomp : Parsetree.expression -> Parsetree.expression = fun x -> match x.pexp_desc with
-    | Parsetree.Pexp_fun(Nolabel, None, p, e) -> decomp e
-    | _ -> x *)
-
   let lid_of_str : string -> Ast_helper.lid = fun s -> Location.mknoloc (Parse.longident (Lexing.from_string s))
 
   let rec name_tree : int -> ('a, 'b, 'c) pat -> int * Parsetree.pattern * string list = let open Ast_helper.Pat in 
@@ -155,11 +151,13 @@ module PatImp : pat = struct
                        let (r, xsp, xsvs) = name_tree m xs in
                        let p = Some([], tuple [xp; xsp]) in     (r    , construct (lid_of_str "(::)") p  , xvs @ xsvs)
 
-  let mk_ident : string -> Asttypes.arg_label * Parsetree.expression = fun vn ->
-    (Asttypes.Nolabel, Ast_helper.Exp.ident (lid_of_str vn))
+  let mk_ident : string -> Parsetree.expression = fun vn -> Ast_helper.Exp.ident (lid_of_str vn)
 
-  let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (_, pat, vs) = name_tree 0 p in 
-    {pc_lhs = pat; pc_guard = None; pc_rhs = Ast_helper.Exp.apply (reduce_code f) (List.map mk_ident vs)}
+  let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (_, pat, vs) = name_tree 0 p in {
+      pc_lhs   = pat; 
+      pc_guard = None; 
+      pc_rhs   = List.fold_left PTReplace.apply_fun (reduce_code f) (List.map mk_ident vs)
+    }
 
   let function_ (cases : ('a, 'b) case list) : ('a -> 'b) code = 
     let fun_exp : Parsetree.expression = Ast_helper.Exp.function_ cases in
