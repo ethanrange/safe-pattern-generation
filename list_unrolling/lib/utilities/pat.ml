@@ -34,6 +34,21 @@ module type pat = sig
 
   val unsafe_loosen : ('a, 'f, 'r) pat -> ('a, 'r) unsafe_pat
   val unsafe_tighten : ('a, 'r) unsafe_pat -> ('a, 'f, 'r) pat
+
+  (* Safe first-class pattern generation *)
+
+  type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * 'f code -> ('a, 'r) patwrap
+
+  (* PRECONDITION: 'f is some function of type 'a_1 -> ... -> 'a_n -> 'r *)
+  val modify_fun_body : 'f code -> ('r -> 'r) code -> 'f code
+
+  (* Temporary exposures *)
+  
+  val promote_code : Parsetree.expression -> 'a code
+  val reduce_code : 'a code -> Parsetree.expression
+  val safe_extract_fun : ('a -> 'b) code -> 'b code
+  val extract_fun : Parsetree.expression -> Parsetree.expression
+  val prepend_code : 'a code -> ('a -> 't -> 'a) code -> (('t -> 'a) code)
 end
 
 module type ptreplace = sig
@@ -97,9 +112,10 @@ module PTReplace : ptreplace = struct
     | Pexp_fun (_, _, pat, ex) -> begin 
         match pat.ppat_desc with
           | Ppat_var {txt = prev; loc = _} -> pt_replace_ident prev subst ex
-          | _ -> raise (NotImplemented "Only functions of the form 'fun <var> -> <exp> can be rebound [Invalid pattern]") 
+          | Ppat_any                       -> ex
+          | _ -> raise (NotImplemented "Only functions of the form 'fun <var> -> <exp> can be applied [Invalid pattern]") 
       end
-    | _ -> raise (NotImplemented "Only functions of the form 'fun <var> -> <exp> can be rebound [Not a function]") 
+    | _ -> raise (NotImplemented "Only functions of the form 'fun <var> -> <exp> can be applied [Not a function]") 
 end
 
 module PatImp : pat = struct
@@ -136,11 +152,18 @@ module PatImp : pat = struct
   and flvars = string Location.loc heap * vletbindings
   and vletbindings = (string * code_repr) list
   
+  (* (Unsafe) promotion and reduction of 'a code to the underlying Parsetree.expression *)
+
   let reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in 
     let Code(_, pexp) = Obj.magic code_rep in pexp
 
+  let promote_code : Parsetree.expression -> 'r code = fun e ->
+    let cc_e : closed_code_repr = Obj.magic e in Obj.magic (open_code cc_e)
+
   let[@warning "-32"] closed_reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in
       let pexp : closed_code_repr :> Parsetree.expression = close_code_repr ~csp:CSP_error code_rep in pexp
+
+  (* Generation of unique variable namings in a pattern_tree *)
 
   let lid_of_str : string -> Ast_helper.lid = fun s -> Location.mknoloc (Parse.longident (Lexing.from_string s))
 
@@ -166,15 +189,9 @@ module PatImp : pat = struct
       pc_rhs   = List.fold_left PTReplace.apply_fun (reduce_code f) (List.map mk_ident vs)
     }
 
-  let function_ (cases : ('a, 'b) case list) : ('a -> 'b) code = 
-    let fun_exp : Parsetree.expression = Ast_helper.Exp.function_ cases in
-    let fun_ccode : closed_code_repr = Obj.magic fun_exp in 
-    Obj.magic (open_code fun_ccode)
+  let function_ (cases : ('a, 'b) case list) : ('a -> 'b) code = promote_code (Ast_helper.Exp.function_ cases)
 
-  let match_ (scr : 'a code) (cases : ('a, 'b) case list) : 'b code =
-    let match_exp : Parsetree.expression = Ast_helper.Exp.match_ (reduce_code scr) cases in
-    let match_ccode : closed_code_repr = Obj.magic match_exp in 
-    Obj.magic (open_code match_ccode)
+  let match_ (scr : 'a code) (cases : ('a, 'b) case list) : 'b code = promote_code (Ast_helper.Exp.match_ (reduce_code scr) cases)
 
   (* Unsafe first-class pattern generation *)
 
@@ -182,4 +199,26 @@ module PatImp : pat = struct
 
   let unsafe_loosen (p : ('a, 'f, 'r) pat) : ('a, 'r) unsafe_pat = Obj.magic p
   let unsafe_tighten (p : ('a, 'r) unsafe_pat) : ('a, 'f, 'r) pat = Obj.magic p
+
+  (* Safe first-class pattern generation *)
+
+  type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * 'f code -> ('a, 'r) patwrap
+
+  let modify_fun_body : 'f code -> ('r -> 'r) code -> 'f code = fun c pp ->
+    let rec dec_app : Parsetree.expression -> Parsetree.expression = fun x -> match x.pexp_desc with
+      | Parsetree.Pexp_fun(Nolabel, None, p, e) -> Ast_helper.Exp.fun_ Nolabel None p (dec_app e)
+      | _ -> PTReplace.apply_fun (reduce_code pp) x
+  in promote_code (dec_app (reduce_code c))
+
+  (* Temporary functions *)
+
+  let safe_extract_fun : ('a -> 'b) code -> 'b code = fun x -> match (reduce_code x).pexp_desc with
+    | Parsetree.Pexp_fun(Nolabel, None, _, e) -> promote_code e
+    | _ -> raise @@ Invalid_argument "Code not of form 'fun <var> -> <exp>'"
+
+  let prepend_code : 'a code -> ('a -> 't -> 'a) code -> (('t -> 'a) code) = fun a b -> .<.~b .~a>.
+
+  let rec extract_fun : Parsetree.expression -> Parsetree.expression = fun x -> match x.pexp_desc with
+  | Parsetree.Pexp_fun(Nolabel, None, _, e) -> extract_fun e
+  | _ -> x
 end
