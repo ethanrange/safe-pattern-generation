@@ -40,14 +40,16 @@ module type pat = sig
   type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * 'f code -> ('a, 'r) patwrap
 
   (* PRECONDITION: 'f is some function of type 'a_1 -> ... -> 'a_n -> 'r *)
-  val modify_fun_body : 'f code -> ('r -> 'r) code -> 'f code
+  val modify_fun_body : 'f code -> ('a -> 'r -> 'r) code -> 'a code -> 'f code
 
   (* Temporary exposures *)
   
   val promote_code : Parsetree.expression -> 'a code
   val reduce_code : 'a code -> Parsetree.expression
+
   val safe_extract_fun : ('a -> 'b) code -> 'b code
   val extract_fun : Parsetree.expression -> Parsetree.expression
+
   val prepend_code : 'a code -> ('a -> 't -> 'a) code -> (('t -> 'a) code)
 end
 
@@ -132,7 +134,6 @@ module PatImp : pat = struct
 
   type ('a, 'b, 'c) pat = pat_tree
 
-
   let __ : ('a, 'r, 'r) pat = Any
   let int : int -> (int, 'r, 'r) pat = fun n -> Int n
   let var : ('a, 'a -> 'r, 'r) pat = Var
@@ -204,10 +205,10 @@ module PatImp : pat = struct
 
   type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * 'f code -> ('a, 'r) patwrap
 
-  let modify_fun_body : 'f code -> ('r -> 'r) code -> 'f code = fun c pp ->
+  let modify_fun_body : 'f code -> ('a -> 'r -> 'r) code -> 'a code -> 'f code = fun c pp a ->
     let rec dec_app : Parsetree.expression -> Parsetree.expression = fun x -> match x.pexp_desc with
       | Parsetree.Pexp_fun(Nolabel, None, p, e) -> Ast_helper.Exp.fun_ Nolabel None p (dec_app e)
-      | _ -> PTReplace.apply_fun (reduce_code pp) x
+      | _ -> PTReplace.apply_fun (PTReplace.apply_fun (reduce_code pp) (reduce_code a)) x
   in promote_code (dec_app (reduce_code c))
 
   (* Temporary functions *)

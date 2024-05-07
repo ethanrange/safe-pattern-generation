@@ -12,12 +12,12 @@ in unsafe_tighten (loop (n - 1));;
 
 (* Safe generator *)
 
-let gen_n_vars (n: int) (i : ('a list -> 'r) code) (bs : ('r -> 'r) code): ('a list, 'r) case =
+let gen_n_vars (n: int) (i : ('a list -> 'r) code) (bs : ('a -> 'r -> 'r) code): ('a list, 'r) case =
   let rec loop (n : int) : ('a, 'r) patwrap =
     if n = 0 
     then Pat (var, i)
     else let Pat (p, c) = loop (n - 1) in
-         Pat (var >:: p, .<fun _ -> .~(modify_fun_body c bs)>.) (*.<fun x -> .~c>.)*)
+         Pat (var >:: p, .<fun x -> .~(modify_fun_body c bs .<x>.)>.)
   in match loop (n - 1) with
     | Pat (p, c) -> p => c
 
@@ -55,7 +55,12 @@ in loop (n - 1) var;;
 let q : (int, int, int) pat = gen_n_vars_safe 1
 let r : (int list, int -> int list, int) pat = gen_n_vars_safe 2 *)
 let[@warning "-32-39-27"] unrolled_nmap_example = .<let rec nmap f = .~(function_ [
-  gen_n_vars 3 .<fun xs -> 0>. (.<fun acc -> 1 + acc>.)
+  empty       => .<[]>.;
+  gen_n_vars 3 .<fun xs -> nmap f xs>. (.<fun x acc -> let y = f x in y :: acc>.);
+  var >:: var => .<fun x xs -> let y = f x in y :: nmap f xs>.
+
+  (* gen_n_vars 3 .<fun xs -> 0>. .<fun x acc -> let y = f x in y + acc>. *)
+
   (* empty       => .<[]>.;
   (unsafe_gen_n_vars 3) => .<fun x1 x2 xs -> let y1 = f x1 in let y2 = f x2 in y1 :: y2 :: nmap f xs>.;
   (var >:: var) => .<fun x xs -> let y = f x in y :: nmap f xs>. *)
@@ -66,6 +71,6 @@ let[@warning "-32-39-27"] unrolled_nmap_example = .<let rec nmap f = .~(function
 (* let x : ('a list, ('a -> 'a list -> 'a list), 'a list) pat = var >:: var
 let y : ('a list, ('a -> 'a -> 'a list -> 'a list), 'a list) pat = var >:: (var >:: var) *)
 
-let prepended = .<fun a -> .~(modify_fun_body .<fun x y -> x + y>. .<fun acc -> 1 + acc>.) a>.
+(* let prepended = .<fun a -> .~(modify_fun_body .<fun x y -> x + y>. .<fun acc -> 1 + acc>.) a>. *)
 
 let renamed = promote_code (Utilities.Pat.PTReplace.apply_fun (reduce_code .<fun x -> x>.) (reduce_code .<1>.))
