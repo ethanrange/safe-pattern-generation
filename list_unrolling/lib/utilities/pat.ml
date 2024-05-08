@@ -35,22 +35,16 @@ module type pat = sig
   val unsafe_loosen : ('a, 'f, 'r) pat -> ('a, 'r) unsafe_pat
   val unsafe_tighten : ('a, 'r) unsafe_pat -> ('a, 'f, 'r) pat
 
-  (* Safe first-class pattern generation *)
+  (* Safe-wrapped unsafe first-class pattern generation *)
 
-  type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * 'f code -> ('a, 'r) patwrap
+  type ('a, 'r) unsafe_patwrap = Pat : ('a list, 'f, 'r) pat * 'f code -> ('a, 'r) unsafe_patwrap
 
   (* PRECONDITION: 'f is some function of type 'a_1 -> ... -> 'a_n -> 'r *)
   val modify_fun_body : 'f code -> ('a -> 'r -> 'r) code -> 'a code -> 'f code
 
-  (* Temporary exposures *)
-  
-  val promote_code : Parsetree.expression -> 'a code
-  val reduce_code : 'a code -> Parsetree.expression
+  (* Safe first-class pattern generation *)
 
-  val safe_extract_fun : ('a -> 'b) code -> 'b code
-  val extract_fun : Parsetree.expression -> Parsetree.expression
-
-  val prepend_code : 'a code -> ('a -> 't -> 'a) code -> (('t -> 'a) code)
+  type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * (('r code -> 'r code) -> 'f code) -> ('a, 'r) patwrap
 end
 
 module type ptreplace = sig
@@ -184,7 +178,7 @@ module PatImp : pat = struct
 
   let mk_ident : string -> Parsetree.expression = fun vn -> Ast_helper.Exp.ident (lid_of_str vn)
 
-  let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (_, pat, vs) = name_tree 0 p in {
+  let (=>) (p : ('a, 'f, 'r) pat) (f : 'f code) : ('a, 'r) case = let (_, pat, vs) = name_tree 0 p in {
       pc_lhs   = pat; 
       pc_guard = None; 
       pc_rhs   = List.fold_left PTReplace.apply_fun (reduce_code f) (List.map mk_ident vs)
@@ -201,9 +195,9 @@ module PatImp : pat = struct
   let unsafe_loosen (p : ('a, 'f, 'r) pat) : ('a, 'r) unsafe_pat = Obj.magic p
   let unsafe_tighten (p : ('a, 'r) unsafe_pat) : ('a, 'f, 'r) pat = Obj.magic p
 
-  (* Safe first-class pattern generation *)
+  (* Safe-wrapped unsafe first-class pattern generation *)
 
-  type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * 'f code -> ('a, 'r) patwrap
+  type ('a, 'r) unsafe_patwrap = Pat : ('a list, 'f, 'r) pat * 'f code -> ('a, 'r) unsafe_patwrap
 
   let modify_fun_body : 'f code -> ('a -> 'r -> 'r) code -> 'a code -> 'f code = fun c pp a ->
     let rec dec_app : Parsetree.expression -> Parsetree.expression = fun x -> match x.pexp_desc with
@@ -211,15 +205,7 @@ module PatImp : pat = struct
       | _ -> PTReplace.apply_fun (PTReplace.apply_fun (reduce_code pp) (reduce_code a)) x
   in promote_code (dec_app (reduce_code c))
 
-  (* Temporary functions *)
+  (* Safe first-class pattern generation *)
 
-  let safe_extract_fun : ('a -> 'b) code -> 'b code = fun x -> match (reduce_code x).pexp_desc with
-    | Parsetree.Pexp_fun(Nolabel, None, _, e) -> promote_code e
-    | _ -> raise @@ Invalid_argument "Code not of form 'fun <var> -> <exp>'"
-
-  let prepend_code : 'a code -> ('a -> 't -> 'a) code -> (('t -> 'a) code) = fun a b -> .<.~b .~a>.
-
-  let rec extract_fun : Parsetree.expression -> Parsetree.expression = fun x -> match x.pexp_desc with
-  | Parsetree.Pexp_fun(Nolabel, None, _, e) -> extract_fun e
-  | _ -> x
+  type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * (('r code -> 'r code) -> 'f code) -> ('a, 'r) patwrap
 end
