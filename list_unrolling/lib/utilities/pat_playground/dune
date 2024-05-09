@@ -1,0 +1,5 @@
+(executable
+ (public_name pat_playground)
+ (name pat_playground)
+ (libraries dynlink metaocaml fcpatterns)
+ (modules pat_playground))

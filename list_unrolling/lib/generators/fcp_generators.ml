@@ -1,23 +1,24 @@
 open Codelib;;
-open Utilities.Pat.PatImp;;
+open Fcpatterns.Pat;;
+module U = Fcpatterns.Unsafe
 
 (* Unsafe generator *)
 
 let unsafe_gen_n_cons (n: int) : ('a, 'f, 'r) pat =
-  let rec loop (n: int) : ('a, 'r) unsafe_pat =   
+  let rec loop (n: int) : ('a, 'r) U.unsafe_pat =   
     if n = 0 
-    then unsafe_loosen var
-    else unsafe_loosen (var >:: (unsafe_tighten (loop (n - 1))))
-in unsafe_tighten (loop (n - 1));;
+    then U.unsafe_loosen var
+    else U.unsafe_loosen (var >:: (U.unsafe_tighten (loop (n - 1))))
+in U.unsafe_tighten (loop (n - 1));;
 
 (* Safe-wrapped unsafe generator *)
 
 let wrapped_unsafe_gen_n_cons (n: int) (i : ('a list -> 'r) code) (bs : ('a -> 'r -> 'r) code): ('a list, 'r) case =
-  let rec loop (n : int) : ('a, 'r) unsafe_patwrap =
+  let rec loop (n : int) : ('a, 'r) U.unsafe_patwrap =
     if n = 0 
     then Pat (var, i)
     else let Pat (p, c) = loop (n - 1) in
-         Pat (var >:: p, .<fun x -> .~(modify_fun_body c bs .<x>.)>.)
+         Pat (var >:: p, .<fun x -> .~(U.modify_fun_body c bs .<x>.)>.)
   in match loop (n - 1) with
     | Pat (p, c) -> p => c;;
 

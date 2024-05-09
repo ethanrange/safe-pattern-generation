@@ -1,7 +1,6 @@
 open Codelib;;
-open Utilities.Pat;;
 
-module Examples(P : pat) = struct
+module Examples(P : module type of Fcpatterns.Pat) = struct
   open P
 
   let[@warning "-32"] f : (int * int -> int) code = function_ [
@@ -50,9 +49,9 @@ end
 
 (* Testing *)
 
-module PatImpExamples = Examples(PatImp)
+module PatImpExamples = Examples(Fcpatterns.Pat)
 
-let () = Codelib.print_code Format.std_formatter PatImpExamples.match_length_example;;
+let () = print_code Format.std_formatter PatImpExamples.match_length_example;;
 
 (* let matcher : 'a list -> 'a list = Runnative.run PatImpExamples.list_example in matcher [1; 2] *)
 (* let nmap : ('a -> 'b) -> 'a list -> 'b list = Runnative.run PatImpExamples.nmap_example in List.iter print_int (nmap succ [1; 2]) *)

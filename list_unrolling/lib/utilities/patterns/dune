@@ -1,0 +1,8 @@
+(library
+ (name fcpatterns)
+ (libraries dynlink metaocaml fun_rebind)
+ (modules fcpatterns common pat unsafe))
+
+; (env
+;   (dev
+;     (flags (:standard -warn-error -A))))

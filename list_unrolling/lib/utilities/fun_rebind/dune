@@ -1,0 +1,3 @@
+(library
+ (name fun_rebind)
+ (libraries dynlink metaocaml))
