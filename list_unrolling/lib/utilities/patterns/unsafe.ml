@@ -4,7 +4,7 @@ open Common;;
 
 (* Unsafe first-class pattern generation *)
 
-type ('a, 'r) unsafe_pat = pat_tree
+type ('a, 'r) unsafe_pat = ('a, unit, 'r) pat
 
 let unsafe_loosen (p : ('a, 'f, 'r) pat) : ('a, 'r) unsafe_pat = Obj.magic p
 let unsafe_tighten (p : ('a, 'r) unsafe_pat) : ('a, 'f, 'r) pat = Obj.magic p

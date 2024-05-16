@@ -2,17 +2,7 @@ open Trx;;
 
 (* Common import *)
 
-type pat_tree = Common.pat_tree
-type ('a, 'b, 'c) pat = pat_tree
-
-let __ : ('a, 'r, 'r) pat = Any
-let int : int -> (int, 'r, 'r) pat = fun n -> Int n
-let var : ('a, 'a -> 'r, 'r) pat = Var
-
-let ( ** ) : ('a, 'k, 'j) pat -> ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat = fun l r -> Pair (l, r)
-
-let empty : ('a, 'r, 'r) pat = EmptyList
-let ( >:: ) : ('a, 'k, 'j) pat -> ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat = fun x xs -> Cons (x, xs)
+type ('a, 'f, 'r) pat = ('a, 'f, 'r) Common.pat
 
 type ('a, 'b) case = Parsetree.case
 
@@ -33,14 +23,14 @@ let[@warning "-32"] closed_reduce_code : 'a code -> Parsetree.expression = fun f
 
 let lid_of_str : string -> Ast_helper.lid = fun s -> Location.mknoloc (Parse.longident (Lexing.from_string s))
 
-let rec name_tree : int -> ('a, 'b, 'c) pat -> int * Parsetree.pattern * string list = let open Ast_helper.Pat in 
+let rec name_tree : int -> ('a, 'f, 'r) pat -> int * Parsetree.pattern * string list = let open Ast_helper.Pat in 
   fun n -> function
     | Any         ->                                          (n    , any ()                           , []        )
     | Int c       ->                                          (n    , constant (Ast_helper.Const.int c), []        )
     | Var         -> let var_name = "r" ^ string_of_int n in  (n + 1, var (Location.mknoloc var_name)  , [var_name])
     
     | Pair(l, r)  -> let (n', lpat, lvs)  = name_tree n l in          
-                      let (n'', rpat, rvs) = name_tree n' r in (n''  , tuple [lpat; rpat]               , lvs @ rvs )
+                     let (n'', rpat, rvs) = name_tree n' r in (n''  , tuple [lpat; rpat]               , lvs @ rvs )
     
     | EmptyList   ->                                          (n    , construct (lid_of_str "[]") None , []        )
     | Cons(x, xs) -> let (m, xp, xvs) = name_tree n x in 
