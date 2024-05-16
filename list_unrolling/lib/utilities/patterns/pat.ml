@@ -4,6 +4,15 @@ open Trx;;
 
 type ('a, 'f, 'r) pat = ('a, 'f, 'r) Common.pat
 
+let __ : ('a, 'r, 'r) pat = Any
+let int : int -> (int, 'r, 'r) pat = fun n -> Int n
+let var : ('a, 'a -> 'r, 'r) pat = Var
+
+let ( ** ) : ('a, 'k, 'j) pat -> ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat = fun l r -> Pair (l, r)
+
+let empty : ('a, 'r, 'r) pat = EmptyList
+let ( >:: ) : ('a, 'k, 'j) pat -> ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat = fun x xs -> Cons (x, xs)
+
 type ('a, 'b) case = Parsetree.case
 
 (* Helper functions *)
@@ -23,7 +32,7 @@ let[@warning "-32"] closed_reduce_code : 'a code -> Parsetree.expression = fun f
 
 let lid_of_str : string -> Ast_helper.lid = fun s -> Location.mknoloc (Parse.longident (Lexing.from_string s))
 
-let rec name_tree : int -> ('a, 'f, 'r) pat -> int * Parsetree.pattern * string list = let open Ast_helper.Pat in 
+let rec name_tree : type a f r . int -> (a, f, r) pat -> int * Parsetree.pattern * string list = let open Ast_helper.Pat in 
   fun n -> function
     | Any         ->                                          (n    , any ()                           , []        )
     | Int c       ->                                          (n    , constant (Ast_helper.Const.int c), []        )
