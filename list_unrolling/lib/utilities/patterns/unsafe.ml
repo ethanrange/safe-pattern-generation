@@ -2,9 +2,11 @@ open Codelib;;
 open Fun_rebind;;
 open Common;;
 
+type ('a, 'f, 'r) pat = ('a, 'f, 'r) Pat.pat
+
 (* Unsafe first-class pattern generation *)
 
-type ('a, 'r) unsafe_pat = pat_tree
+type ('a, 'r) unsafe_pat = ('a, unit, 'r) Pat.pat
 
 let unsafe_loosen (p : ('a, 'f, 'r) pat) : ('a, 'r) unsafe_pat = Obj.magic p
 let unsafe_tighten (p : ('a, 'r) unsafe_pat) : ('a, 'f, 'r) pat = Obj.magic p

@@ -2,8 +2,7 @@ open Trx;;
 
 (* Common import *)
 
-type pat_tree = Common.pat_tree
-type ('a, 'b, 'c) pat = pat_tree
+type ('a, 'f, 'r) pat = ('a, 'f, 'r) Common.pat
 
 let __ : ('a, 'r, 'r) pat = Any
 let int : int -> (int, 'r, 'r) pat = fun n -> Int n
@@ -33,7 +32,7 @@ let[@warning "-32"] closed_reduce_code : 'a code -> Parsetree.expression = fun f
 
 let lid_of_str : string -> Ast_helper.lid = fun s -> Location.mknoloc (Parse.longident (Lexing.from_string s))
 
-let rec name_tree : int -> ('a, 'b, 'c) pat -> int * Parsetree.pattern * string list = let open Ast_helper.Pat in 
+let rec name_tree : type a f r . int -> (a, f, r) pat -> int * Parsetree.pattern * string list = let open Ast_helper.Pat in 
   fun n -> function
     | Any         ->                                          (n    , any ()                           , []        )
     | Int c       ->                                          (n    , constant (Ast_helper.Const.int c), []        )
