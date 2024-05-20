@@ -1,6 +1,6 @@
 (library
  (name fcpatterns)
- (libraries dynlink metaocaml fun_rebind)
+ (libraries dynlink metaocaml)
  (modules fcpatterns common pat unsafe))
 
 ; (env
