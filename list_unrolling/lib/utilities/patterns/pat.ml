@@ -1,4 +1,5 @@
 open Trx;;
+open Common;;
 
 (* Common import *)
 
@@ -6,52 +7,49 @@ type ('a, 'f, 'r) pat = ('a, 'f, 'r) Common.pat
 
 let __ : ('a, 'r, 'r) pat = Any
 let int : int -> (int, 'r, 'r) pat = fun n -> Int n
-let var : ('a, 'a -> 'r, 'r) pat = Var
+let var : ('a, 'a code -> 'r, 'r) pat = Var
 
 let ( ** ) : ('a, 'k, 'j) pat -> ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat = fun l r -> Pair (l, r)
 
 let empty : ('a, 'r, 'r) pat = EmptyList
 let ( >:: ) : ('a, 'k, 'j) pat -> ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat = fun x xs -> Cons (x, xs)
 
-type ('a, 'b) case = Parsetree.case
+type ('a, 'r) case = Parsetree.case
 
 (* Helper functions *)
-
-(* (Unsafe) promotion and reduction of 'a code to the underlying Parsetree.expression *)
-
-let reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in 
-  let Common.Code(_, pexp) = Obj.magic code_rep in pexp
-
-let promote_code : Parsetree.expression -> 'r code = fun e ->
-  let cc_e : closed_code_repr = Obj.magic e in Obj.magic (open_code cc_e)
-
-let[@warning "-32"] closed_reduce_code : 'a code -> Parsetree.expression = fun f -> let code_rep : 'd code :> code_repr = Obj.magic f in
-    let pexp : closed_code_repr :> Parsetree.expression = close_code_repr ~csp:CSP_error code_rep in pexp
 
 (* Generation of unique variable namings in a pattern_tree *)
 
 let lid_of_str : string -> Ast_helper.lid = fun s -> Location.mknoloc (Parse.longident (Lexing.from_string s))
 
-let rec name_tree : type a f r . int -> (a, f, r) pat -> int * Parsetree.pattern * string list = let open Ast_helper.Pat in 
-  fun n -> function
-    | Any         ->                                          (n    , any ()                           , []        )
-    | Int c       ->                                          (n    , constant (Ast_helper.Const.int c), []        )
-    | Var         -> let var_name = "r" ^ string_of_int n in  (n + 1, var (Location.mknoloc var_name)  , [var_name])
-    
-    | Pair(l, r)  -> let (n', lpat, lvs)  = name_tree n l in          
-                      let (n'', rpat, rvs) = name_tree n' r in (n''  , tuple [lpat; rpat]               , lvs @ rvs )
-    
-    | EmptyList   ->                                          (n    , construct (lid_of_str "[]") None , []        )
-    | Cons(x, xs) -> let (m, xp, xvs) = name_tree n x in 
-                      let (r, xsp, xsvs) = name_tree m xs in
-                      let p = Some([], tuple [xp; xsp]) in     (r    , construct (lid_of_str "(::)") p  , xvs @ xsvs)
+let mk_ident : string -> Parsetree.expression = fun vn -> Ast_helper.Exp.ident (lid_of_str vn);;
+let mk_expr_ident (s : string) : 'a code = promote_code (mk_ident s)
 
-let mk_ident : string -> Parsetree.expression = fun vn -> Ast_helper.Exp.ident (lid_of_str vn)
+(* Heterogenous sequences combinators *)
+let nil : 'i -> 'i = fun k -> k
+let one (v : 'v) : ('v -> 'k) -> 'k = fun k -> k v
 
-let (=>) (p : ('a, 'f, 'r) pat) (f : 'f code) : ('a, 'r) case = let (_, pat, vs) = name_tree 0 p in {
+let compose (p : 'i -> 'j) (q : 'j -> 'k) : 'i -> 'k = fun k -> q (p k)
+
+let rec build_hetseq : type a f r . int -> (a, f, r) pat -> int * Parsetree.pattern * (f -> r) = fun n -> let open Ast_helper.Pat in function
+  | Any         ->                                                     (n, any (), nil)
+  | Int c       ->                                                     (n, constant (Ast_helper.Const.int c), nil)
+  | Var         -> let var_name = "r" ^ string_of_int n in
+                   let var_pat = var (Location.mknoloc var_name) in    (n + 1, var_pat, one (mk_expr_ident var_name))
+  
+  | Pair(l, r) -> let (n', lpat, lf) = build_hetseq n l in
+                  let (n'', rpat, rf) = build_hetseq n' r in           (n'', tuple [lpat; rpat], compose lf rf)
+
+  | EmptyList   -> let empty_pat = construct (lid_of_str "[]") None in (n, empty_pat, nil)
+  | Cons(x, xs) -> let (n', xp, lf) = build_hetseq n x in
+                   let (n'', xsp, rf) = build_hetseq n' xs in
+                   let p = Some([], tuple [xp; xsp]) in
+                   let cons_pat = construct (lid_of_str "(::)") p in   (n'', cons_pat, compose lf rf)
+
+let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (_, pat, body_gen) = build_hetseq 0 p in {
     pc_lhs   = pat; 
     pc_guard = None; 
-    pc_rhs   = List.fold_left Fun_rebind.apply_fun (reduce_code f) (List.map mk_ident vs)
+    pc_rhs   = reduce_code (body_gen f)
   }
 
 let function_ (cases : ('a, 'b) case list) : ('a -> 'b) code = promote_code (Ast_helper.Exp.function_ cases)
@@ -60,4 +58,4 @@ let match_ (scr : 'a code) (cases : ('a, 'b) case list) : 'b code = promote_code
 
 (* Safe first-class pattern generation *)
 
-type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r) pat * (('r code -> 'r code) -> 'f code) -> ('a, 'r) patwrap
+type ('a, 'r) patwrap = Pat : ('a list, 'f, 'r code) pat * (('r code -> 'r code) -> 'f) -> ('a, 'r) patwrap

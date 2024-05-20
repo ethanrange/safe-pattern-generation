@@ -1,7 +1,7 @@
 type (_, _, _) pat =
     Any : ('a, 'r, 'r) pat
   | Int : int -> (int, 'r, 'r) pat
-  | Var : ('a, 'a -> 'r, 'r) pat
+  | Var : ('a, 'a Trx.code -> 'r, 'r) pat
   | EmptyList : ('a, 'r, 'r) pat
   | Pair : ('a, 'k, 'j) pat * ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat
   | Cons : ('a, 'k, 'j) pat * ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat

@@ -4,19 +4,19 @@ module Examples(P : module type of Fcpatterns.Pat) = struct
   open P
 
   let[@warning "-32"] f : (int * int -> int) code = function_ [
-      (var   ** int 4) => .< fun x -> x + 1 >.; 
+      (var   ** int 4) => (fun x -> .<.~x + 1 >.); 
       (int 3 ** __   ) => .< 1 >.             ;
-      (var   ** var  ) => .< fun x -> fun y -> x + y >.
+      (var   ** var  ) => fun x y -> .<.~x + .~y>.
     ]
   let[@warning "-32"] pairs_example : (int  * int -> int) code = .<let f = .~(function_ [
     __    ** int 2   => .< 1 >. ;
     (int 3 ** __)    => .< 1 >. ;
-    (var   ** var)   => .< fun a b -> a + b >.;
+    (var   ** var)   => fun a b -> .< .~a + .~b >.;
     ]) in f>.
 
   let[@warning "-32"] list_example : ('a list -> 'a list) code = .<let f = .~(function_ [
     empty       => .< [] >. ;
-    var >:: var => .<fun _ xs -> xs>.
+    var >:: var => fun _ xs -> xs
   ]) in f>.
 
   (* Due to OCaml's restrictions on the RHS of let recs, a let rec RHS cannot be a direct quote of code. In cases
@@ -34,16 +34,16 @@ module Examples(P : module type of Fcpatterns.Pat) = struct
      See https://ocaml.org/manual/5.1/letrecvalues.html for discussion of these RHS restrictions *)
   let[@warning "-32"] length_example : ('a list -> int) code = .<let rec len _ = .~(function_ [
     empty       => .< 0 >. ;
-    var >:: var => .<fun _ xs -> 1 + len () xs>.
+    var >:: var => fun _ xs -> .<1 + len () .~xs>.
   ]) in len ()>.
 
   let[@warning "-32"] match_length_example : ('a list -> int) code = .<let rec len l = .~(match_ .<l>. [
     empty       => .< 0 >. ;
-    var >:: var => .<fun _ xs -> 1 + len xs>.
+    var >:: var => fun _ xs -> .<1 + len .~xs>.
   ]) in len>.
   let[@warning "-32"] nmap_example = .<let rec nmap f = .~(function_ [
     empty       => .<[]>.;
-    var >:: var => .<fun x xs -> let y = f x in y :: nmap f xs>.
+    var >:: var => fun x xs -> .<let y = f .~x in y :: nmap f .~xs>.
   ]) in nmap>.;;
 end
 

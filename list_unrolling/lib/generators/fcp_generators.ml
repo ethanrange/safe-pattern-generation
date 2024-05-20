@@ -11,25 +11,31 @@ let unsafe_gen_n_cons (n: int) : ('a, 'f, 'r) pat =
     else U.unsafe_loosen (var >:: (U.unsafe_tighten (loop (n - 1))))
 in U.unsafe_tighten (loop (n - 1));;
 
-(* Safe-wrapped unsafe generator *)
+(* Safe-wrapped unsafe generator
+
+This unsafe approach is not possible without near-complete redesign after migration to the (=>) operator taking an 'f
+instead of an 'f code, as the inner expression can no longer be unsafely accessed without applying values to the built
+up function .
 
 let wrapped_unsafe_gen_n_cons (n: int) (i : ('a list -> 'r) code) (bs : ('a -> 'r -> 'r) code): ('a list, 'r) case =
   let rec loop (n : int) : ('a, 'r) U.unsafe_patwrap =
     if n = 0 
-    then Pat (var, i)
-    else let Pat (p, c) = loop (n - 1) in
-         Pat (var >:: p, .<fun x -> .~(U.modify_fun_body c bs .<x>.)>.)
+    then UPat (var, i)
+    else let UPat (p, c) = loop (n - 1) in
+         UPat (var >:: p, .<fun x -> .~(U.modify_fun_body c bs .<x>.)>.)
   in match loop (n - 1) with
-    | Pat (p, c) -> p => c;;
+    | UPat (p, c) -> p => c;;
+    
+*)
 
 (* Safe generators *)
 
 let gen_n_cons (n: int) (i : 'a list code -> 'r code) (bs : 'a code -> 'r code -> 'r code) : ('a list, 'r) case =
   let rec loop (n : int) : ('a, 'r) patwrap =
     if n = 0 
-    then Pat (var, fun k -> .<fun xs -> .~(k (i .<xs>.))>.)
+    then Pat (var, fun k -> fun xs -> k (i xs))
     else let Pat (p, k) = loop (n - 1) in
-          Pat (var >:: p, fun c -> .<fun x -> .~(k (fun o -> c (bs .<x>. o)))>.)
+          Pat (var >:: p, fun c -> fun x -> k (fun o -> c (bs x o)))
   in match loop n with
     | Pat (p, c) -> p => (c Fun.id);;
 
@@ -38,7 +44,7 @@ let gen_exactly_n_cons (n: int) (i : 'r code) (bs : 'a code -> 'r code -> 'r cod
     if n = 0 
     then Pat (empty, fun k -> k i)
     else let Pat (p, k) = loop (n - 1) in
-          Pat (var >:: p, fun c -> .<fun x -> .~(k (fun o -> c (bs .<x>. o)))>.)
+          Pat (var >:: p, fun c -> fun x -> k (fun o -> c (bs x o)))
   in match loop n with
     | Pat (p, c) -> p => (c Fun.id);;
 
@@ -63,5 +69,5 @@ let gen_unrolled_nmap (n : int) = .<let rec nmap f = .~(function_ [
 (* Safe get tail of list *)
 let gen_list_example : (int list -> int list) code = .<let f = .~(function_ [
   empty       => .<[]>.;
-  var >:: var => .<fun _ acc -> acc>.
+  var >:: var => fun _ acc -> acc
 ]) in f>.;;
