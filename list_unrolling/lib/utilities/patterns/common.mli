@@ -11,8 +11,24 @@ type cr = Code of flvars * Parsetree.expression
 and flvars = string Location.loc heap * vletbindings
 and vletbindings = (string * Trx.code_repr) list
 
+val cr_to_code_repr : cr -> Trx.code_repr
+val code_repr_to_cr : Trx.code_repr -> cr
+
+val code_to_cr : 'a Trx.code -> cr
+
+(* 
+
+These unsafe functions have been removed after implementing BER MetaOCaml's variable validation to prevent scope
+extrusion, however are left commented to ensure commented previous approaches are still comprehensible.
+
 val reduce_code : 'a Trx.code -> Parsetree.expression
 
 val promote_code : Parsetree.expression -> 'r Trx.code
 
 val closed_reduce_code : 'a Trx.code -> Parsetree.expression
+
+*)
+
+val empty_vars : flvars
+
+val validate_vars_list : Location.t -> cr list -> Parsetree.expression list * flvars
