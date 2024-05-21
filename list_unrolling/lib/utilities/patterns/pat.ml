@@ -31,22 +31,25 @@ let one (v : 'v) : ('v -> 'k) -> 'k = fun k -> k v
 
 let compose (p : 'i -> 'j) (q : 'j -> 'k) : 'i -> 'k = fun k -> q (p k)
 
-let rec build_case : type a f r . int -> (a, f, r) pat -> int * Parsetree.pattern * (f -> r) = fun n -> let open Ast_helper.Pat in function
-  | Any         ->                                                     (n, any (), nil)
-  | Int c       ->                                                     (n, constant (Ast_helper.Const.int c), nil)
-  | Var         -> let var_name = "r" ^ string_of_int n in
-                   let var_pat = var (Location.mknoloc var_name) in    (n + 1, var_pat, one (mk_expr_ident var_name))
+let patvar_count = ref 0
+
+let rec build_case : type a f r . (a, f, r) pat -> Parsetree.pattern * (f -> r) = let open Ast_helper.Pat in function
+  | Any         ->                                                     (any (), nil)
+  | Int c       ->                                                     (constant (Ast_helper.Const.int c), nil)
+  | Var         -> incr patvar_count; 
+                   let var_name = "r" ^ string_of_int !patvar_count in
+                   let var_pat = var (Location.mknoloc var_name) in    (var_pat, one (mk_expr_ident var_name))
   
-  | Pair(l, r)  -> let (n', lpat, lf) = build_case n l in
-                   let (n'', rpat, rf) = build_case n' r in            (n'', tuple [lpat; rpat], compose lf rf)
+  | Pair(l, r)  -> let (lpat, lf) = build_case l in
+                   let (rpat, rf) = build_case r in                 (tuple [lpat; rpat], compose lf rf)
 
-  | EmptyList   -> let empty_pat = construct (lid_of_str "[]") None in (n, empty_pat, nil)
-  | Cons(x, xs) -> let (n', xp, lf) = build_case n x in
-                   let (n'', xsp, rf) = build_case n' xs in
+  | EmptyList   -> let empty_pat = construct (lid_of_str "[]") None in (empty_pat, nil)
+  | Cons(x, xs) -> let (xp, lf) = build_case x in
+                   let (xsp, rf) = build_case xs in
                    let p = Some([], tuple [xp; xsp]) in
-                   let cons_pat = construct (lid_of_str "(::)") p in   (n'', cons_pat, compose lf rf)
+                   let cons_pat = construct (lid_of_str "(::)") p in   (cons_pat, compose lf rf)
 
-let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (_, pat, body_gen) = build_case 0 p in (pat, body_gen f)
+let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (pat, body_gen) = build_case p in (pat, body_gen f)
 
 let prod_safe_caselist (scr_cr_o : cr option) (raw_clist : (Parsetree.pattern * cr) list) : 
   (Parsetree.expression option * Parsetree.case list * flvars) = let open Parsetree in
