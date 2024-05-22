@@ -1,0 +1,11 @@
+(lang dune 3.14)
+
+(name power_example)
+
+(generate_opam_files true)
+
+(authors "Ethan Range")
+
+(maintainers "Ethan Range")
+
+(wrapped_executables false)
