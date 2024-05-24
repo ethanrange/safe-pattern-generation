@@ -11,7 +11,7 @@ let var : ('a, 'a code -> 'r, 'r) pat = Var
 
 let ( ** ) : ('a, 'k, 'j) pat -> ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat = fun l r -> Pair (l, r)
 
-let empty : ('a, 'r, 'r) pat = EmptyList
+let empty : ('a list, 'r, 'r) pat = EmptyList
 let ( >:: ) : ('a, 'k, 'j) pat -> ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat = fun x xs -> Cons (x, xs)
 
 type ('a, 'r) case = Parsetree.pattern * 'r code

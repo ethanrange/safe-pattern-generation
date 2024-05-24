@@ -14,7 +14,7 @@ val var : ('a, 'a code -> 'r, 'r) pat
 val ( ** ) : ('a, 'k, 'j) pat -> ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat
 
 (* Empty and cons list patterns *)
-val empty : ('a, 'r, 'r) pat
+val empty : ('a list, 'r, 'r) pat
 val ( >:: ) : ('a, 'k, 'j) pat -> ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat
 
 (* Pattern - function case pairs *)
