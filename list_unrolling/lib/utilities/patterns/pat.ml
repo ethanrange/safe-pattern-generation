@@ -14,7 +14,7 @@ let ( ** ) : ('a, 'k, 'j) pat -> ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat = fun
 let empty : ('a list, 'r, 'r) pat = EmptyList
 let ( >:: ) : ('a, 'k, 'j) pat -> ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat = fun x xs -> Cons (x, xs)
 
-type ('a, 'r) case = Parsetree.pattern * 'r code
+type ('a, 'r) case = Parsetree.pattern * 'r code * string Location.loc list
 
 (* Helper functions *)
 
@@ -33,26 +33,28 @@ let compose (p : 'i -> 'j) (q : 'j -> 'k) : 'i -> 'k = fun k -> q (p k)
 
 let patvar_count = ref 0
 
-let rec build_case : type a f r . (a, f, r) pat -> Parsetree.pattern * (f -> r) = let open Ast_helper.Pat in function
-  | Any         ->                                                     (any (), nil)
-  | Int c       ->                                                     (constant (Ast_helper.Const.int c), nil)
+let rec build_case : type a f r . (a, f, r) pat -> Parsetree.pattern * (f -> r) * string Location.loc list = let open Ast_helper.Pat in function
+  | Any         ->                                                     (any (), nil, [])
+  | Int c       ->                                                     (constant (Ast_helper.Const.int c), nil, [])
   | Var         -> incr patvar_count; 
-                   let var_name = "r" ^ string_of_int !patvar_count in
-                   let var_pat = var (Location.mknoloc var_name) in    (var_pat, one (mk_expr_ident var_name))
+                   let var_name = "r" (*^ string_of_int !patvar_count*) in
+                   let var_pat = var (Location.mknoloc var_name) in    (var_pat, one (mk_expr_ident var_name), [Location.mknoloc var_name])
   
-  | Pair(l, r)  -> let (lpat, lf) = build_case l in
-                   let (rpat, rf) = build_case r in                 (tuple [lpat; rpat], compose lf rf)
+  | Pair(l, r)  -> let (lpat, lf, ls) = build_case l in
+                   let (rpat, rf, rs) = build_case r in                 (tuple [lpat; rpat], compose lf rf, ls @ rs)
 
-  | EmptyList   -> let empty_pat = construct (lid_of_str "[]") None in (empty_pat, nil)
-  | Cons(x, xs) -> let (xp, lf) = build_case x in
-                   let (xsp, rf) = build_case xs in
+  | EmptyList   -> let empty_pat = construct (lid_of_str "[]") None in (empty_pat, nil, [])
+  | Cons(x, xs) -> let (xp, lf, ls) = build_case x in
+                   let (xsp, rf, rs) = build_case xs in
                    let p = Some([], tuple [xp; xsp]) in
-                   let cons_pat = construct (lid_of_str "(::)") p in   (cons_pat, compose lf rf)
+                   let cons_pat = construct (lid_of_str "(::)") p in   (cons_pat, compose lf rf, ls @ rs)
 
-let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (pat, body_gen) = build_case p in (pat, body_gen f)
+let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (pat, body_gen, strs) = build_case p in (pat, body_gen f, strs)
 
-let prod_safe_caselist (scr_cr_o : cr option) (raw_clist : (Parsetree.pattern * cr) list) : 
-  (Parsetree.expression option * Parsetree.case list * flvars) = let open Parsetree in
+let[@warning "-8-27-32"] prod_safe_caselist (scr_cr_o : cr option) (raw_clist : (Parsetree.pattern * cr) list) : 
+  (Parsetree.expression option * Parsetree.case list * flvars) = failwith "Prod_safe error"
+  
+  (* let open Parsetree in
   let (patterns, ucases) = List.split raw_clist in 
   let[@warning "-8"] (scr_e_o, exprs, vars) : (expression option * expression list * flvars)  = match scr_cr_o with
     | Some(scr_cr) -> let (scr_e :: exprs, vars) = validate_vars_list Location.none (scr_cr :: ucases) in
@@ -62,25 +64,29 @@ let prod_safe_caselist (scr_cr_o : cr option) (raw_clist : (Parsetree.pattern * 
   in 
   let prod_cases : (pattern * expression) -> case = fun (p, e) -> { pc_lhs = p; pc_guard = None; pc_rhs = e } in
   let caselist = List.map prod_cases (List.combine patterns exprs) in
-  (scr_e_o, caselist, vars)
+  (scr_e_o, caselist, vars) *)
 
 
-let[@warning "-8"] match_internal (scr_cr : cr) (cases_cr : (Parsetree.pattern * cr) list) : cr =
+let[@warning "-8-27-32"][@warning "-8"] match_internal (scr_cr : cr) (cases_cr : (Parsetree.pattern * cr) list) : cr =
   let (Some(scr), caselist, vars) = prod_safe_caselist (Some(scr_cr)) cases_cr in
     Code(vars, Ast_helper.Exp.match_ ~loc:(scr.pexp_loc) scr caselist)
 
-let match_ (scr_c : 'a code) (cases_c : ('a, 'b) case list) : 'b code =
-  let scr = code_to_cr scr_c in
+let[@warning "-8-27-32"] match_ (scr_c : 'a code) (cases_c : ('a, 'b) case list) : 'b code = failwith "match"
+  (* let scr = code_to_cr scr_c in
   let cases = List.map (fun (p, c) -> (p, code_to_cr c)) cases_c in
-  Obj.magic (match_internal scr cases)
+  Obj.magic (match_internal scr cases) *)
 
-let[@warning "-8"] function_internal (cases_cr : (Parsetree.pattern * cr) list) : cr =
-  let (None, caselist, vars) = prod_safe_caselist None cases_cr in
-    Code(vars, Ast_helper.Exp.function_ caselist)
+let[@warning "-8-27-32"] function_internal (cases_cr : (Parsetree.pattern * cr) list) : cr = failwith  "fun internal"
+  (* let (None, caselist, vars) = prod_safe_caselist None cases_cr in
+    Code(vars, Ast_helper.Exp.function_ caselist) *)
 
 let function_ (cases_c : ('a, 'b) case list) : ('a -> 'b) code = 
-  let cases = List.map (fun (p, c) -> (p, code_to_cr c)) cases_c in
-  Obj.magic (function_internal cases)
+  let (ps, strs) = (List.split (List.map (fun (p, _, s) -> (p, s)) cases_c)) in
+  let fstrs = List.flatten strs in
+  let conv : code_repr array -> (code_repr option * code_repr) array = fun _ -> Array.of_list (List.map (fun (_, c, _) -> let cr : _ code :> code_repr = c in (None, cr)) cases_c) in
+  Obj.magic (Trx.build_fun Location.none Nolabel (ps, fstrs) conv)
+  (* let cases = List.map (fun (p, c) -> (p, code_to_cr c)) cases_c in
+  Obj.magic (function_internal cases) *)
 
 (* Safe first-class pattern generation *)
 
