@@ -1,10 +1,23 @@
 (executable
  (name benchmark)
  (libraries generators map_impls core core_bench core_unix.command_unix)
- (flags (-thread)))
+ (flags (-thread))
+ (modules benchmark))
 
 (rule
  (alias bench)
  (deps (universe))
  (action
   (run ./benchmark.exe -quota 0.5)))
+
+(executable
+ (name unrolling)
+ (libraries generators fcp_generators map_impls core core_bench core_unix.command_unix)
+ (flags (-thread))
+ (modules unrolling))
+
+(rule
+ (alias unrolling)
+ (deps (universe))
+ (action
+  (run ./unrolling.exe -quota 0.5)))
