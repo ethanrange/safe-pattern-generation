@@ -1,6 +1,6 @@
 open Codelib;;
 
-type ('a, 'b, 'c) pat
+type ('a, 'f, 'r) pat = ('a, 'f, 'r) Common.pat
 
 (* Wildcard pattern *)
 val __ : ('a, 'r, 'r) pat

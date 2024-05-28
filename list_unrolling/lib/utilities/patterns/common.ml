@@ -5,9 +5,9 @@ type (_, _, _) pat =
     Any : ('a, 'r, 'r) pat
   | Int : int -> (int, 'r, 'r) pat
   | Var : ('a, 'a code -> 'r, 'r) pat
-  | EmptyList : ('a list, 'r, 'r) pat
+  | [] : ('a list, 'r, 'r) pat
   | Pair : ('a, 'k, 'j) pat * ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat
-  | Cons : ('a, 'k, 'j) pat * ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat
+  | (::) : ('a, 'k, 'j) pat * ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat
 
 (* Helper functions *)
 

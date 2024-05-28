@@ -36,7 +36,7 @@ let gen_n_cons (n: int) (i : 'a list code -> 'r code) (bs : 'a code -> 'r code -
     if n = 0 
     then Pat (var, fun k -> fun xs -> k (i xs))
     else let Pat (p, k) = loop (n - 1) in
-          Pat (var >:: p, fun c -> fun x -> k (fun o -> c (bs x o)))
+          Pat (var :: p, fun c -> fun x -> k (fun o -> c (bs x o)))
   in match loop n with
     | Pat (p, c) -> p => (c Fun.id);;
 
@@ -44,9 +44,9 @@ let gen_exactly_n_cons (n: int) (i : 'r code) (bs : 'a code -> 'r code -> 'r cod
   if n < 0 then raise (Invalid_argument "Input n must be greater than or equal to 0") else
   let rec loop (n : int) : ('a, 'r) patwrap =
     if n = 0 
-    then Pat (empty, fun k -> k i)
+    then Pat ([], fun k -> k i)
     else let Pat (p, k) = loop (n - 1) in
-          Pat (var >:: p, fun c -> fun x -> k (fun o -> c (bs x o)))
+          Pat (var :: p, fun c -> fun x -> k (fun o -> c (bs x o)))
   in match loop n with
     | Pat (p, c) -> p => (c Fun.id);;
 

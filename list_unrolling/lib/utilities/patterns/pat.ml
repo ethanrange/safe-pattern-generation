@@ -11,8 +11,8 @@ let var : ('a, 'a code -> 'r, 'r) pat = Var
 
 let ( ** ) : ('a, 'k, 'j) pat -> ('b, 'j, 'r) pat -> ('a * 'b, 'k, 'r) pat = fun l r -> Pair (l, r)
 
-let empty : ('a list, 'r, 'r) pat = EmptyList
-let ( >:: ) : ('a, 'k, 'j) pat -> ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat = fun x xs -> Cons (x, xs)
+let empty : ('a list, 'r, 'r) pat = []
+let ( >:: ) : ('a, 'k, 'j) pat -> ('a list, 'j, 'r) pat -> ('a list, 'k, 'r) pat = fun x xs -> x :: xs
 
 type ('a, 'r) case = Parsetree.pattern * 'r code
 
@@ -43,10 +43,10 @@ let rec build_case : type a f r . (a, f, r) pat -> Parsetree.pattern * (f -> r) 
   | Pair(l, r)  -> let (lpat, lf) = build_case l in
                    let (rpat, rf) = build_case r in                 (tuple [lpat; rpat], compose lf rf)
 
-  | EmptyList   -> let empty_pat = construct (lid_of_str "[]") None in (empty_pat, nil)
-  | Cons(x, xs) -> let (xp, lf) = build_case x in
+  | []          -> let empty_pat = construct (lid_of_str "[]") None in (empty_pat, nil)
+  | x :: xs     -> let (xp, lf) = build_case x in
                    let (xsp, rf) = build_case xs in
-                   let p = Some([], tuple [xp; xsp]) in
+                   let p = Some(List.[], tuple [xp; xsp]) in
                    let cons_pat = construct (lid_of_str "(::)") p in   (cons_pat, compose lf rf)
 
 let (=>) (p : ('a, 'f, 'r code) pat) (f : 'f) : ('a, 'r) case = let (pat, body_gen) = build_case p in (pat, body_gen f)
