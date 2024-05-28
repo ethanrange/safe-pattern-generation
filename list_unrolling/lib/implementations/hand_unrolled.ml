@@ -18,9 +18,6 @@ let rec map4_hw f = function
     y1 :: y2 :: y3 :: y4 :: map4_hw f xs
   | x :: xs -> let y = f x in y :: map4_hw f xs
 
-  
-  
-
 let rec map8_hw f = function
   | [] -> []
   | x1 :: x2 :: x3 :: x4 :: x5 :: x6 :: x7 :: x8 :: xs -> 
