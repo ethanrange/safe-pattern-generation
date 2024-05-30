@@ -1,29 +1,25 @@
 open Map_impls;;
 
+(* Benchmark comparison of a selection of list mapping functions *)
+
 let rec nmap_unrolled2_handwritten f = function
   | [] -> []
-  | x1 :: x2 :: xs -> let y1 = f x1 and y2 = f x2 in y1 :: y2 :: nmap_unrolled2_handwritten f xs
+  | x1 :: x2 :: xs -> let y1 = f x1 
+                      and y2 = f x2 
+                      in y1 :: y2 :: nmap_unrolled2_handwritten f xs
   | x :: xs -> let y = f x in y :: nmap_unrolled2_handwritten f xs
 
-let rec nmap_unrolled2_generated f_2 x_3 =
-    match x_3 with
-    | [] -> []
-    | xs_4 ->
-        ((fun nm_5 ->
-            fun f_6 ->
-              function
-              | x_7::xs_8 ->
-                  let y_9 = f_6 x_7 in y_9 ::
-                    (((fun nm_10 ->
-                         fun f_11 ->
-                           function
-                           | x_12::xs_13 ->
-                               let y_14 = f_11 x_12 in y_14 ::
-                                 (((fun nm_15 ->
-                                      fun f_16 -> fun xs_17 -> nm_15 f_16 xs_17))
-                                    nm_10 f_11 xs_13)
-                           | [] -> [])) nm_5 f_6 xs_8)
-              | [] -> [])) nmap_unrolled2_generated f_2 xs_4
+let rec nmap_unrolled2_generated f_2 x_3 = match x_3 with
+  | [] -> []
+  | xs_4 -> ((fun nm_5 -> fun f_6 -> function
+              | x_7::xs_8 -> let y_9 = f_6 x_7 in y_9 ::
+                             (((fun nm_10 -> fun f_11 -> function
+                                | x_12::xs_13 -> let y_14 = f_11 x_12 in y_14 ::
+                                                 (((fun nm_15 -> fun f_16 -> fun xs_17 -> nm_15 f_16 xs_17))
+                                                 nm_10 f_11 xs_13)
+                                | [] -> [])) nm_5 f_6 xs_8)
+              | [] -> [])
+            ) nmap_unrolled2_generated f_2 xs_4
 
 let rec nmap_unrolled8_handwritten f = function
 | [] -> []
@@ -158,29 +154,24 @@ let _tmap : 'a 'b. ('a -> 'b) -> 'a list -> 'b list = trmc_map
 let test_list = List.init 100_000 Fun.id 
 
 (* Check the behaviour *)
-let () = 
-    let m = Map_impls.Standard.map succ [] test_list
-    and n = Map_impls.Standard.nmap succ test_list
 
-    and nu2h = nmap_unrolled2_handwritten succ test_list
-    and nu2g = nmap_unrolled2_generated succ test_list
-    and nu8h = nmap_unrolled8_handwritten succ test_list
-    and nu8g = nmap_unrolled8_generated succ test_list
+let baseline_result = List.map succ test_list
 
-    and u = Unrolled_list.umap succ [] test_list
-    and c = Unrolled_ds.cmap8 succ Nil test_list
-    and c2 = Unrolled_ds.cmap16 succ Nil test_list
-    and t = trmc_map succ test_list in
-    assert (m = u);
-    assert (m = n);
-    assert (m = c);
-    assert (m = c2);
-    assert (m = t);
+let map_results = [
+  Map_impls.Standard.map succ [] test_list;
+  Map_impls.Standard.nmap succ test_list;
+  nmap_unrolled2_handwritten succ test_list;
+  nmap_unrolled2_generated succ test_list;
+  nmap_unrolled8_handwritten succ test_list;
+  nmap_unrolled8_generated succ test_list;
+  Unrolled_list.umap succ [] test_list;
+  Unrolled_ds.cmap8 succ Nil test_list;
+  Unrolled_ds.cmap16 succ Nil test_list;
+  trmc_map succ test_list;
+]
 
-    assert (m = nu2h);
-    assert (m = nu2g);
-    assert (m = nu8h);
-    assert (m = nu8g)
+let all_equal = List.fold_left (fun b l -> b && (l = baseline_result)) true
+let () = assert (all_equal map_results)
 
 let map_bench _ = Core.Staged.stage (fun () -> ignore (Standard.map succ [] test_list))
 let nmap_bench _ = Core.Staged.stage (fun () -> ignore (Standard.nmap succ test_list))
@@ -197,7 +188,6 @@ let cmap_bench _ = Core.Staged.stage (fun () -> ignore (Unrolled_ds.cmap8 succ N
 let cmap2_bench _ = Core.Staged.stage (fun () -> ignore (Unrolled_ds.cmap16 succ Nil test_list))
 let tmap_bench _ = Core.Staged.stage (fun () -> ignore (trmc_map succ test_list))
 
-(* open Core *)
 open Core_bench
 
 let args = [0]

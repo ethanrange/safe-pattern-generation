@@ -1,14 +1,14 @@
 (executable
- (name benchmark)
+ (name assorted_maps)
  (libraries generators map_impls core core_bench core_unix.command_unix)
  (flags (-thread))
- (modules benchmark))
+ (modules assorted_maps))
 
 (rule
- (alias bench)
+ (alias assorted_maps)
  (deps (universe))
  (action
-  (run ./benchmark.exe -quota 0.5)))
+  (run ./assorted_maps.exe -quota 0.5)))
 
 (executable
  (name unrolling)
