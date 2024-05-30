@@ -8,6 +8,11 @@
  (libraries dynlink metaocaml fcpatterns)
  (modules fcp_generators))
 
+(executable
+ (name report_examples)
+ (libraries dynlink metaocaml fcp_generators fcpatterns)
+ (modules report_examples))
+
 ; (env
 ;   (dev
 ;     (flags (:standard -warn-error -A))))
