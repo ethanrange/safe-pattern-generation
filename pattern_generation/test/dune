@@ -1,2 +1,2 @@
 (test
- (name test_loop_unrolling))
+ (name test_pattern_generation))

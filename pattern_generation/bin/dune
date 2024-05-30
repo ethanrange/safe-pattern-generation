@@ -1,5 +1,4 @@
 (executable
- (public_name list_unrolling)
  (name main)
  (libraries generators fcp_generators map_impls)
  (modules main))

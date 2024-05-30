@@ -1,11 +1,11 @@
 (lang dune 3.14)
 
-(name list_unrolling)
+(name pattern_generation)
 
 (generate_opam_files true)
 
 (source
- (github ethanrange/msp-optimised-datastructures))
+ (github ethanrange/safe-pattern-generation))
 
 (authors "Ethan Range")
 
@@ -16,10 +16,10 @@
 ; (documentation https://url/to/documentation)
 
 (package
- (name list_unrolling)
- (synopsis "MSP-Generated list urollings")
- (description "MSP-Generated list urollings")
+ (name pattern_generation)
+ (synopsis "Safe pattern generation for multi-stage programming")
+ (description "A library on top of MetaOCaml, allowing for the type-safe generation of pattern matching expressions containing statically-unknown patterns")
  (depends ocaml dune dynlink metaocaml core_unix core_bench)
  (tags
-  ("multi-stage programming", "unrolling", "optimisation", "data structures")))
+  ("multi-stage programming", "patterns", "metaprogramming", "MetaOCaml")))
 
