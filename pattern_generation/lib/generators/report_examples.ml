@@ -83,6 +83,13 @@ let gen_len : ('a list -> int) code =
       var >:: var => fun _ xs -> .<1 + len .~xs>.
   ]) in len>.
 
+(* Failing function length generation [Invalid RHS] *)
+
+(* let gen_len : ('a list -> int) code = .<let rec len = .~(function_ [
+      empty       => .< 0 >. ;
+      var >:: var => fun _ xs -> .<1 + len .~xs>.
+  ]) in len>. *)
+
 (* Native, MetaOCaml and first-class pattern generation implementations of sum3 *)
 
 let sum3_plain = function
@@ -167,3 +174,7 @@ let r = ref .<0>.
 let _ = fun r0 -> (r := .<r0>.)
 let extrusion = .<fun _ -> .~(!r)>.
 let _ = Runnative.run extrusion 0
+
+let genlet_extrusion = function_ [
+  var => fun x -> let y = genlet ~name:"y" .<.~x + 1>. in .<.~y>.
+]
